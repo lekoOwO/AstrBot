@@ -505,7 +505,7 @@ class TelegramPlatformEvent(AstrMessageEvent):
             payload["message_thread_id"] = message_thread_id
 
         # sendMessageDraft supports both private chats and group chats (Bot API 9.5+)
-        logger.info("[Telegram] streaming output: using sendMessageDraft")
+        logger.info("[Telegram] 流式输出: 使用 sendMessageDraft")
         await self._send_streaming_draft(
             user_name, message_thread_id, payload, generator
         )
