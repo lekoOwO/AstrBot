@@ -380,10 +380,8 @@ class TelegramPlatformEvent(AstrMessageEvent):
     ) -> None:
         """通过 Bot.send_message_draft 发送草稿消息（流式推送部分消息）。
 
-        该 API 仅支持私聊。
-
         Args:
-            chat_id: 目标私聊的 chat_id
+            chat_id: 目标聊天的 chat_id
             draft_id: 草稿唯一标识，非零整数；相同 draft_id 的变更会以动画展示
             text: 消息文本，1-4096 字符
             message_thread_id: 可选，目标消息线程 ID
@@ -506,19 +504,11 @@ class TelegramPlatformEvent(AstrMessageEvent):
         if message_thread_id:
             payload["message_thread_id"] = message_thread_id
 
-        # sendMessageDraft 仅支持私聊（显式检查 FRIEND_MESSAGE）
-        is_private = self.get_message_type() == MessageType.FRIEND_MESSAGE
-
-        if is_private:
-            logger.info("[Telegram] 流式输出: 使用 sendMessageDraft (私聊)")
-            await self._send_streaming_draft(
-                user_name, message_thread_id, payload, generator
-            )
-        else:
-            logger.info("[Telegram] 流式输出: 使用 edit_message_text fallback (群聊)")
-            await self._send_streaming_edit(
-                user_name, message_thread_id, payload, generator
-            )
+        # sendMessageDraft supports both private chats and group chats (Bot API 9.5+)
+        logger.info("[Telegram] streaming output: using sendMessageDraft")
+        await self._send_streaming_draft(
+            user_name, message_thread_id, payload, generator
+        )
 
         # 内联父类 send_streaming 的副作用（避免传入已消费的 generator）
         asyncio.create_task(
@@ -533,7 +523,7 @@ class TelegramPlatformEvent(AstrMessageEvent):
         payload: dict[str, Any],
         generator,
     ) -> None:
-        """使用 sendMessageDraft API 进行流式推送（私聊专用）。
+        """使用 sendMessageDraft API 进行流式推送（支持私聊和群聊，Bot API 9.5+）。
 
         流式过程中使用 sendMessageDraft 推送草稿动画，
         流式结束后发送一条真实消息保留最终内容（draft 是临时的，会消失）。
